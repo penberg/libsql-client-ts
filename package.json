@@ -22,26 +22,21 @@
     ],
     "license": "MIT",
     "type": "module",
-    "main": "lib-cjs/node.js",
-    "types": "lib-esm/node.d.ts",
+    "main": "lib-cjs/wasm.js",
+    "types": "lib-esm/wasm.d.ts",
     "exports": {
         ".": {
-            "types": "./lib-esm/node.d.ts",
+            "types": "./lib-esm/wasm.d.ts",
             "import": {
                 "workerd": "./lib-esm/web.js",
                 "deno": "./lib-esm/web.js",
                 "edge-light": "./lib-esm/web.js",
                 "netlify": "./lib-esm/web.js",
-                "node": "./lib-esm/node.js",
+                "wasm": "./lib-esm/wasm.js",
                 "browser": "./lib-esm/web.js",
-                "default": "./lib-esm/node.js"
+                "default": "./lib-esm/wasm.js"
             },
-            "require": "./lib-cjs/node.js"
-        },
-        "./node": {
-            "types": "./lib-esm/node.d.ts",
-            "import": "./lib-esm/node.js",
-            "require": "./lib-cjs/node.js"
+            "require": "./lib-cjs/wasm.js"
         },
         "./http": {
             "types": "./lib-esm/http.d.ts",
@@ -53,10 +48,10 @@
             "import": "./lib-esm/ws.js",
             "require": "./lib-cjs/ws.js"
         },
-        "./sqlite3": {
-            "types": "./lib-esm/sqlite3.d.ts",
-            "import": "./lib-esm/sqlite3.js",
-            "require": "./lib-cjs/sqlite3.js"
+        "./wasm": {
+            "types": "./lib-esm/wasm.d.ts",
+            "import": "./lib-esm/wasm.js",
+            "require": "./lib-cjs/wasm.js"
         },
         "./web": {
             "types": "./lib-esm/web.d.ts",
@@ -67,7 +62,7 @@
     "typesVersions": {
         "*": {
             ".": [
-                "./lib-esm/node.d.ts"
+                "./lib-esm/wasm.d.ts"
             ],
             "http": [
                 "./lib-esm/http.d.ts"
@@ -75,8 +70,8 @@
             "hrana": [
                 "./lib-esm/hrana.d.ts"
             ],
-            "sqlite3": [
-                "./lib-esm/sqlite3.d.ts"
+            "wasm": [
+                "./lib-esm/wasm.d.ts"
             ],
             "web": [
                 "./lib-esm/web.d.ts"
@@ -100,12 +95,11 @@
     },
     "dependencies": {
         "@libsql/hrana-client": "^0.5.5",
-        "js-base64": "^3.7.5",
-        "libsql": "^0.2.0-pre.7"
+        "@sqlite.org/sqlite-wasm": "^3.44.2-build1",
+        "js-base64": "^3.7.5"
     },
     "devDependencies": {
         "@types/jest": "^29.2.5",
-        "@types/node": "^18.15.5",
         "jest": "^29.3.1",
         "ts-jest": "^29.0.5",
         "typedoc": "^0.23.28",

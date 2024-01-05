@@ -1,5 +1,6 @@
-import Database from "libsql";
-import { Buffer } from "node:buffer";
+import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
+
+import type { Database } from '@sqlite.org/sqlite-wasm';
 
 import type {
     Config, IntMode, Client, Transaction, TransactionMode,
@@ -12,12 +13,16 @@ import { supportedUrlLink, transactionModeToBegin, ResultSetImpl } from "./util.
 
 export * from "./api.js";
 
-export function createClient(config: Config): Client {
+// TODO: Replace with Wasm import
+class Statement {
+}
+
+export async function createClient(config: Config): Promise<Client> {
     return _createClient(expandConfig(config, true));
 }
 
 /** @private */
-export function _createClient(config: ExpandedConfig): Client {
+export async function _createClient(config: ExpandedConfig): Promise<Client> {
     if (config.scheme !== "file") {
         throw new LibsqlError(
             `URL scheme ${JSON.stringify(config.scheme + ":")} is not supported by the local sqlite3 client. ` +
@@ -53,25 +58,27 @@ export function _createClient(config: ExpandedConfig): Client {
         syncUrl: config.syncUrl,
     };
 
-    const db = new Database(path, options);
+    const sqlite3 = await sqlite3InitModule();
 
-    executeStmt(db, "SELECT 1 AS checkThatTheDatabaseCanBeOpened", config.intMode);
+    const db: Database = new sqlite3.oo1.DB('/mydb.sqlite3', 'ct');
+    // const db = new Database(path, options);
 
-    return new Sqlite3Client(path, options, db, config.intMode);
+    // executeStmt(db, "SELECT 1 AS checkThatTheDatabaseCanBeOpened", config.intMode);
+
+    return new Sqlite3Client(path, /*options,*/ db, config.intMode);
 }
 
 export class Sqlite3Client implements Client {
     #path: string;
-    #options: Database.Options;
-    #db: Database.Database | null;
+    #db: Database | null;
     #intMode: IntMode;
     closed: boolean;
     protocol: "file";
 
     /** @private */
-    constructor(path: string, options: Database.Options, db: Database.Database, intMode: IntMode) {
+    constructor(path: string, /*options: Database.Options,*/ db: Database, intMode: IntMode) {
         this.#path = path;
-        this.#options = options;
+        //this.#options = options;
         this.#db = db;
         this.#intMode = intMode;
         this.closed = false;
@@ -89,25 +96,28 @@ export class Sqlite3Client implements Client {
         try {
             executeStmt(db, transactionModeToBegin(mode), this.#intMode);
             const resultSets = stmts.map((stmt) => {
+                /* TODO:
                 if (!db.inTransaction) {
                     throw new LibsqlError("The transaction has been rolled back", "TRANSACTION_CLOSED");
-                }
+                }*/
                 return executeStmt(db, stmt, this.#intMode);
             });
             executeStmt(db, "COMMIT", this.#intMode)
             return resultSets;
         } finally {
+            /* TODO
             if (db.inTransaction) {
                 executeStmt(db, "ROLLBACK", this.#intMode);
-            }
+            }*/
         }
     }
 
     async transaction(mode: TransactionMode = "write"): Promise<Transaction> {
         const db = this.#getDb();
         executeStmt(db, transactionModeToBegin(mode), this.#intMode);
-        this.#db = null; // A new connection will be lazily created on next use
-        return new Sqlite3Transaction(db, this.#intMode);
+        //this.#db = null; // A new connection will be lazily created on next use
+        //return new Sqlite3Transaction(db, this.#intMode);
+        throw new Error("Not implemented");
     }
 
     async executeMultiple(sql: string): Promise<void> {
@@ -116,23 +126,23 @@ export class Sqlite3Client implements Client {
         try {
             return executeMultiple(db, sql);
         } finally {
+            /* TODO:
             if (db.inTransaction) {
                 executeStmt(db, "ROLLBACK", this.#intMode);
-            }
+            }*/
         }
     }
 
 
     async sync(): Promise<void> {
-        this.#checkNotClosed();
-        await this.#getDb().sync();
+        throw new LibsqlError("sync not supported in wasm mode", "SYNC_NOT_SUPPORTED");
     }
 
     close(): void {
         this.closed = true;
-        if (this.#db !== null) {
-            this.#db.close();
-        }
+        //if (this.#db !== null) {
+        //    this.#db.close();
+        //}
     }
 
     #checkNotClosed(): void {
@@ -142,20 +152,21 @@ export class Sqlite3Client implements Client {
     }
 
     // Lazily creates the database connection and returns it
-    #getDb(): Database.Database {
-        if (this.#db === null) {
-            this.#db = new Database(this.#path, this.#options);
-        }
-        return this.#db;
+    #getDb(): Database {
+        //if (this.#db === null) {
+        //    this.#db = new Database(this.#path, this.#options);
+        //}
+        //return this.#db;
+        throw new Error("Not implemented");
     }
 }
 
 export class Sqlite3Transaction implements Transaction {
-    #database: Database.Database;
+    #database: Database;
     #intMode: IntMode;
 
     /** @private */
-    constructor(database: Database.Database, intMode: IntMode) {
+    constructor(database: Database, intMode: IntMode) {
         this.#database = database;
         this.#intMode = intMode;
     }
@@ -178,9 +189,10 @@ export class Sqlite3Transaction implements Transaction {
     }
 
     async rollback(): Promise<void> {
+        /* TODO:
         if (!this.#database.open) {
             return;
-        }
+        }*/
         this.#checkNotClosed();
         executeStmt(this.#database, "ROLLBACK", this.#intMode);
     }
@@ -191,13 +203,17 @@ export class Sqlite3Transaction implements Transaction {
     }
 
     close(): void {
+        /* TODO:
         if (this.#database.inTransaction) {
             executeStmt(this.#database, "ROLLBACK", this.#intMode);
-        }
+        }*/
     }
 
     get closed(): boolean {
+        /* TODO:
         return !this.#database.inTransaction;
+        */
+        throw new Error("Not implemented");
     }
 
     #checkNotClosed(): void {
@@ -207,7 +223,7 @@ export class Sqlite3Transaction implements Transaction {
     }
 }
 
-function executeStmt(db: Database.Database, stmt: InStatement, intMode: IntMode): ResultSet {
+function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultSet {
     let sql: string;
     let args: Array<unknown> | Record<string, unknown>;
     if (typeof stmt === "string") {
@@ -229,6 +245,8 @@ function executeStmt(db: Database.Database, stmt: InStatement, intMode: IntMode)
 
     try {
         const sqlStmt = db.prepare(sql);
+
+        /*
         sqlStmt.safeIntegers(true);
 
         let returnsData = true;
@@ -255,6 +273,8 @@ function executeStmt(db: Database.Database, stmt: InStatement, intMode: IntMode)
             const lastInsertRowid = BigInt(info.lastInsertRowid);
             return new ResultSetImpl([], [], [], rowsAffected, lastInsertRowid);
         }
+        */
+        throw new Error("Not implemented");
     } catch (e) {
         throw mapSqliteError(e);
     }
@@ -337,7 +357,7 @@ function valueToSql(value: InValue, intMode: IntMode): unknown {
 const minInteger = -9223372036854775808n;
 const maxInteger = 9223372036854775807n;
 
-function executeMultiple(db: Database.Database, sql: string): void {
+function executeMultiple(db: Database, sql: string): void {
     try {
         db.exec(sql);
     } catch (e) {
@@ -346,8 +366,11 @@ function executeMultiple(db: Database.Database, sql: string): void {
 }
 
 function mapSqliteError(e: unknown): unknown {
+    throw new Error("Not implemented");
+    /*
     if (e instanceof Database.SqliteError) {
         return new LibsqlError(e.message, e.code, e.rawCode, e);
     }
     return e;
+    */
 }
