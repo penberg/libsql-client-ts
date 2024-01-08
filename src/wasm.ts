@@ -1,6 +1,6 @@
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 
-import type { Database } from '@sqlite.org/sqlite-wasm';
+import type { Database, InitOptions } from '@sqlite.org/sqlite-wasm';
 
 import type {
     Config, IntMode, Client, Transaction, TransactionMode,
@@ -12,7 +12,6 @@ import { expandConfig } from "./config.js";
 import { supportedUrlLink, transactionModeToBegin, ResultSetImpl } from "./util.js";
 
 export * from "./api.js";
-
 // TODO: Replace with Wasm import
 class Statement {
 }
@@ -58,7 +57,14 @@ export async function _createClient(config: ExpandedConfig): Promise<Client> {
         syncUrl: config.syncUrl,
     };
 
-    const sqlite3 = await sqlite3InitModule();
+    const initOptions: InitOptions = {};
+    if(config.sqliteWasmPath) {
+        initOptions.locateFile = function() {
+            return config.sqliteWasmPath!;
+        };
+    }
+
+    const sqlite3 = await sqlite3InitModule(initOptions);
 
     const db: Database = new sqlite3.oo1.DB('/mydb.sqlite3', 'ct');
     // const db = new Database(path, options);
