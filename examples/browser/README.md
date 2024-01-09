@@ -11,7 +11,7 @@ npm run build
 Then run the following in this directory:
 
 ```
-./node_modules/.bin/esbuild --target=safari16 index.js --bundle --outfile=dist/out.js
+./node_modules/.bin/esbuild --target=safari16 index.js --bundle --outfile=dist/out.js --format=esm
 ```
 
 and open the app in browser:
