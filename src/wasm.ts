@@ -1,6 +1,6 @@
-import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
+import sqlite3InitModule from '@libsql/libsql-wasm';
 
-import type { Database, InitOptions } from '@sqlite.org/sqlite-wasm';
+import type { Database, InitOptions } from '@libsql/libsql-wasm';
 
 import type {
     Config, IntMode, Client, Transaction, TransactionMode,
@@ -74,6 +74,10 @@ export async function _createClient(config: ExpandedConfig): Promise<Client> {
     return new Sqlite3Client(path, /*options,*/ db, config.intMode);
 }
 
+function inTransaction(db: Database): boolean {
+    return db.getAutocommit() == 0;
+}
+
 export class Sqlite3Client implements Client {
     #path: string;
     #db: Database | null;
@@ -102,19 +106,17 @@ export class Sqlite3Client implements Client {
         try {
             executeStmt(db, transactionModeToBegin(mode), this.#intMode);
             const resultSets = stmts.map((stmt) => {
-                /* TODO:
-                if (!db.inTransaction) {
+                if (!inTransaction(db)) {
                     throw new LibsqlError("The transaction has been rolled back", "TRANSACTION_CLOSED");
-                }*/
+                }
                 return executeStmt(db, stmt, this.#intMode);
             });
             executeStmt(db, "COMMIT", this.#intMode)
             return resultSets;
         } finally {
-            /* TODO
-            if (db.inTransaction) {
+            if (inTransaction(db)) {
                 executeStmt(db, "ROLLBACK", this.#intMode);
-            }*/
+            }
         }
     }
 
@@ -132,10 +134,9 @@ export class Sqlite3Client implements Client {
         try {
             return executeMultiple(db, sql);
         } finally {
-            /* TODO:
-            if (db.inTransaction) {
+            if (inTransaction(db)) {
                 executeStmt(db, "ROLLBACK", this.#intMode);
-            }*/
+            }
         }
     }
 
@@ -146,9 +147,9 @@ export class Sqlite3Client implements Client {
 
     close(): void {
         this.closed = true;
-        //if (this.#db !== null) {
-        //    this.#db.close();
-        //}
+        if (this.#db !== null) {
+            this.#db.close();
+        }
     }
 
     #checkNotClosed(): void {
@@ -209,17 +210,13 @@ export class Sqlite3Transaction implements Transaction {
     }
 
     close(): void {
-        /* TODO:
-        if (this.#database.inTransaction) {
+        if (inTransaction(this.#database)) {
             executeStmt(this.#database, "ROLLBACK", this.#intMode);
-        }*/
+        }
     }
 
     get closed(): boolean {
-        /* TODO:
-        return !this.#database.inTransaction;
-        */
-        throw new Error("Not implemented");
+        return !inTransaction(this.#database);
     }
 
     #checkNotClosed(): void {
