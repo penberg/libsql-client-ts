@@ -12,9 +12,6 @@ import { expandConfig } from "./config.js";
 import { supportedUrlLink, transactionModeToBegin, ResultSetImpl } from "./util.js";
 
 export * from "./api.js";
-// TODO: Replace with Wasm import
-class Statement {
-}
 
 export async function createClient(config: Config): Promise<Client> {
     return _createClient(expandConfig(config, true));
