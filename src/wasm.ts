@@ -247,17 +247,12 @@ function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultS
     try {
         const sqlStmt = db.prepare(sql);
 
+        // TODO: sqlStmt.safeIntegers(true);
+
+        let returnsData = sqlStmt.columnCount > 0;
+
+        // TODO: use sqlStmt.step()
         /*
-        sqlStmt.safeIntegers(true);
-
-        let returnsData = true;
-        try {
-            sqlStmt.raw(true);
-        } catch {
-            // raw() throws an exception if the statement does not return data
-            returnsData = false;
-        }
-
         if (returnsData) {
             const columns = Array.from(sqlStmt.columns().map(col => col.name));
             const columnTypes = Array.from(sqlStmt.columns().map(col => col.type ?? ""));
