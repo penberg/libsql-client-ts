@@ -1,6 +1,6 @@
 import sqlite3InitModule from '@libsql/libsql-wasm';
 
-import type { Database, InitOptions } from '@libsql/libsql-wasm';
+import type { Database, InitOptions, Sqlite3Static } from '@libsql/libsql-wasm';
 
 import type {
     Config, IntMode, Client, Transaction, TransactionMode,
@@ -67,11 +67,10 @@ export async function _createClient(config: ExpandedConfig): Promise<Client> {
     const sqlite3 = await sqlite3InitModule(initOptions);
 
     const db: Database = new sqlite3.oo1.DB('/mydb.sqlite3', 'ct');
-    // const db = new Database(path, options);
 
-    // executeStmt(db, "SELECT 1 AS checkThatTheDatabaseCanBeOpened", config.intMode);
+    executeStmt(db, "SELECT 1 AS checkThatTheDatabaseCanBeOpened", config.intMode);
 
-    return new Sqlite3Client(path, /*options,*/ db, config.intMode);
+    return new Sqlite3Client(sqlite3, path, /*options,*/ db, config.intMode);
 }
 
 function inTransaction(db: Database): boolean {
@@ -79,6 +78,7 @@ function inTransaction(db: Database): boolean {
 }
 
 export class Sqlite3Client implements Client {
+    #sqlite3: Sqlite3Static;
     #path: string;
     #db: Database | null;
     #intMode: IntMode;
@@ -86,7 +86,8 @@ export class Sqlite3Client implements Client {
     protocol: "file";
 
     /** @private */
-    constructor(path: string, /*options: Database.Options,*/ db: Database, intMode: IntMode) {
+    constructor(sqlite3: Sqlite3Static, path: string, /*options: Database.Options,*/ db: Database, intMode: IntMode) {
+        this.#sqlite3 = sqlite3;
         this.#path = path;
         //this.#options = options;
         this.#db = db;
@@ -123,9 +124,8 @@ export class Sqlite3Client implements Client {
     async transaction(mode: TransactionMode = "write"): Promise<Transaction> {
         const db = this.#getDb();
         executeStmt(db, transactionModeToBegin(mode), this.#intMode);
-        //this.#db = null; // A new connection will be lazily created on next use
-        //return new Sqlite3Transaction(db, this.#intMode);
-        throw new Error("Not implemented");
+        this.#db = null; // A new connection will be lazily created on next use
+        return new Sqlite3Transaction(db, this.#intMode);
     }
 
     async executeMultiple(sql: string): Promise<void> {
@@ -160,11 +160,10 @@ export class Sqlite3Client implements Client {
 
     // Lazily creates the database connection and returns it
     #getDb(): Database {
-        //if (this.#db === null) {
-        //    this.#db = new Database(this.#path, this.#options);
-        //}
-        //return this.#db;
-        throw new Error("Not implemented");
+        if (this.#db === null) {
+            this.#db = new this.#sqlite3.oo1.DB('/mydb.sqlite3', 'ct');
+        }
+        return this.#db;
     }
 }
 
@@ -196,10 +195,9 @@ export class Sqlite3Transaction implements Transaction {
     }
 
     async rollback(): Promise<void> {
-        /* TODO:
-        if (!this.#database.open) {
+        if (!this.#database.isOpen()) {
             return;
-        }*/
+        }
         this.#checkNotClosed();
         executeStmt(this.#database, "ROLLBACK", this.#intMode);
     }
