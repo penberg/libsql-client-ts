@@ -1,6 +1,6 @@
 import sqlite3InitModule from '@libsql/libsql-wasm';
 
-import type { Database, InitOptions, Sqlite3Static } from '@libsql/libsql-wasm';
+import type { Database, InitOptions, SqlValue, Sqlite3Static } from '@libsql/libsql-wasm';
 
 import type {
     Config, IntMode, Client, Transaction, TransactionMode,
@@ -226,7 +226,7 @@ export class Sqlite3Transaction implements Transaction {
 
 function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultSet {
     let sql: string;
-    let args: Array<unknown> | Record<string, unknown>;
+    let args: Array<SqlValue> | Record<string, SqlValue>;
     if (typeof stmt === "string") {
         sql = stmt;
         args = [];
@@ -251,9 +251,9 @@ function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultS
 
         let returnsData = sqlStmt.columnCount > 0;
 
+        if (returnsData) {
         // TODO: use sqlStmt.step()
         /*
-        if (returnsData) {
             const columns = Array.from(sqlStmt.columns().map(col => col.name));
             const columnTypes = Array.from(sqlStmt.columns().map(col => col.type ?? ""));
             const rows = sqlStmt.all(args).map((sqlRow) => {
@@ -263,14 +263,26 @@ function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultS
             const rowsAffected = 0;
             const lastInsertRowid = undefined;
             return new ResultSetImpl(columns, columnTypes, rows, rowsAffected, lastInsertRowid);
+        */
+            throw new Error("Not implemented");
         } else {
-            const info = sqlStmt.run(args);
-            const rowsAffected = info.changes;
-            const lastInsertRowid = BigInt(info.lastInsertRowid);
+            if (Array.isArray(args)) {
+                for (let i = 0; i < args.length; ++i) {
+                    const value = args[i];
+                    sqlStmt.bind(i, value);
+                }
+            } else {
+                for (const argName in args) {
+                    const idx = sqlStmt.getParamIndex(argName)!;
+                    const value = args[argName];
+                    sqlStmt.bind(idx, value);
+                }
+            }
+            const info = sqlStmt.step();
+            const rowsAffected = 0; /* FIXME: info.changes; */
+            const lastInsertRowid = BigInt(0); /* FIXME: BigInt(info.lastInsertRowid); */
             return new ResultSetImpl([], [], [], rowsAffected, lastInsertRowid);
         }
-        */
-        throw new Error("Not implemented");
     } catch (e) {
         throw mapSqliteError(e);
     }
@@ -317,7 +329,7 @@ function valueFromSql(sqlValue: unknown, intMode: IntMode): Value {
 const minSafeBigint = -9007199254740991n;
 const maxSafeBigint = 9007199254740991n;
 
-function valueToSql(value: InValue, intMode: IntMode): unknown {
+function valueToSql(value: InValue, intMode: IntMode): SqlValue {
     if (typeof value === "number") {
         if (!Number.isFinite(value)) {
             throw new RangeError("Only finite numbers (not Infinity or NaN) can be passed as arguments");
