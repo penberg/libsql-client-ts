@@ -276,8 +276,8 @@ function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultS
                 }
             }
             const info = sqlStmt.step();
-            const rowsAffected = 0; /* FIXME: info.changes; */
-            const lastInsertRowid = BigInt(0); /* FIXME: BigInt(info.lastInsertRowid); */
+            const rowsAffected = db.changes();
+            const lastInsertRowid = BigInt(db.lastInsertRowid());
             return new ResultSetImpl([], [], [], rowsAffected, lastInsertRowid);
         }
     } catch (e) {
