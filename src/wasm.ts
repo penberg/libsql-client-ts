@@ -248,34 +248,34 @@ function executeStmt(db: Database, stmt: InStatement, intMode: IntMode): ResultS
 
         let returnsData = sqlStmt.columnCount > 0;
 
+        if (Array.isArray(args)) {
+            for (let i = 0; i < args.length; ++i) {
+                const value = args[i];
+                sqlStmt.bind(i, value);
+            }
+        } else {
+            for (const argName in args) {
+                const idx = sqlStmt.getParamIndex(argName)!;
+                const value = args[argName];
+                sqlStmt.bind(idx, value);
+            }
+        }
         if (returnsData) {
-        // TODO: use sqlStmt.step()
-        /*
-            const columns = Array.from(sqlStmt.columns().map(col => col.name));
-            const columnTypes = Array.from(sqlStmt.columns().map(col => col.type ?? ""));
-            const rows = sqlStmt.all(args).map((sqlRow) => {
-                return rowFromSql(sqlRow as Array<unknown>, columns, intMode);
-            });
-            // TODO: can we get this info from better-sqlite3?
+            let columns: string[] = sqlStmt.getColumnNames();
+            let columnTypes: string[] = [];
+            let rows: Row[] = [];
+            for (;;) {
+                if (!sqlStmt.step()) {
+                    break;
+                }
+                const values: unknown[] = sqlStmt.get([]);
+                rows.push(rowFromSql(values, columns, intMode));
+            }
             const rowsAffected = 0;
             const lastInsertRowid = undefined;
             return new ResultSetImpl(columns, columnTypes, rows, rowsAffected, lastInsertRowid);
-        */
-            throw new Error("Not implemented");
         } else {
-            if (Array.isArray(args)) {
-                for (let i = 0; i < args.length; ++i) {
-                    const value = args[i];
-                    sqlStmt.bind(i, value);
-                }
-            } else {
-                for (const argName in args) {
-                    const idx = sqlStmt.getParamIndex(argName)!;
-                    const value = args[argName];
-                    sqlStmt.bind(idx, value);
-                }
-            }
-            const info = sqlStmt.step();
+            sqlStmt.step(); // TODO: check return value
             const rowsAffected = db.changes();
             const lastInsertRowid = BigInt(db.lastInsertRowid());
             return new ResultSetImpl([], [], [], rowsAffected, lastInsertRowid);
@@ -371,11 +371,6 @@ function executeMultiple(db: Database, sql: string): void {
 }
 
 function mapSqliteError(e: unknown): unknown {
-    throw new Error("Not implemented");
-    /*
-    if (e instanceof Database.SqliteError) {
-        return new LibsqlError(e.message, e.code, e.rawCode, e);
-    }
+    // TODO: Map to LibsqlError
     return e;
-    */
 }
