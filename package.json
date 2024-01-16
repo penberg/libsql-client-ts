@@ -95,7 +95,7 @@
     },
     "dependencies": {
         "@libsql/hrana-client": "^0.5.5",
-        "@libsql/libsql-wasm": "^0.0.1",
+        "@libsql/libsql-wasm-experimental": "^0.0.1",
         "js-base64": "^3.7.5"
     },
     "devDependencies": {
